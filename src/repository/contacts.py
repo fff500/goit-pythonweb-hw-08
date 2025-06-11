@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import List
 
 from sqlalchemy import select
@@ -20,6 +21,22 @@ class ContactsRepository:
         stmt = select(Contact).filter_by(id=contact_id)
         contact = await self.db.execute(stmt)
         return contact.scalar_one_or_none()
+
+    async def search_contacts(self, query: str) -> List[Contact]:
+        stmt = select(Contact).filter(
+            (Contact.first_name.ilike(f"%{query}%"))
+            | (Contact.last_name.ilike(f"%{query}%"))
+            | (Contact.email.ilike(f"%{query}%"))
+        )
+        contacts = await self.db.execute(stmt)
+        return contacts.scalars().all()
+
+    async def get_birthdays_next_week(self) -> List[Contact]:
+        today = datetime.now().date()
+        next_week = today + timedelta(days=7)
+        stmt = select(Contact).filter(Contact.birth_date.between(today, next_week))
+        contacts = await self.db.execute(stmt)
+        return contacts.scalars().all()
 
     async def create_contact(self, body: ContactModel) -> Contact:
         contact = Contact(**body.model_dump(exclude_unset=True))
